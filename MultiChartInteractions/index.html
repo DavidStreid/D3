@@ -22,12 +22,19 @@ body {
   stroke: #000;
 }
 
-.tooltip {
+.ownLabel {
   position: absolute;
   width: 200px;
   height: 28px;
   pointer-events: none;
 }
+.otherLabel{
+  position: absolute;
+  width: 200px;
+  height: 28px;
+  pointer-events: none;
+}
+
 </style>
 <body>
 <script src="d3.v3.min.js"></script>
@@ -44,7 +51,11 @@ var margin = {top: 20, right: 20, bottom: 30, left: 40},
  * axis - sets up axis
  */ 
 
-var getLabel = function(d) {return d['label']}
+var getLabel = function(d,graph) {
+  // console.log(graph);
+  // console.log(d['label']);
+  // console.log(graph + d['label'])
+  return graph + d['label']}
 
 // setup x 
 // var xValue = function(d) { return d.Calories;}, // data -> value
@@ -92,9 +103,14 @@ var schmidt_svg = d3.select("body").append("svg")
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-// add the tooltip area to the webpage
-var tooltip = d3.select("body").append("div")
-    .attr("class", "tooltip")
+// add the ownLabel area to the webpage
+var ownLabel = d3.select("body").append("div")
+    .attr("class", "ownLabel")
+    .style("opacity", 0);
+
+// add the otherLabel area to the webpage
+var otherLabel = d3.select("body").append("div")
+    .attr("class", "otherLabel")
     .style("opacity", 0);
 
 function removeNones(x,y,data){
@@ -131,6 +147,8 @@ function getYOffsetTop(){
 // load data
 d3.csv("schmidtCounts", function(error, input_data) { 
   console.log("In SCHMIDT_COUNTS");
+  let graph = "s";
+  let otherGraph = "w";
   let xLabel = 'sx';
   let yLabel = 'sy';
   let otherXLabel = 'wx';
@@ -183,21 +201,40 @@ d3.csv("schmidtCounts", function(error, input_data) {
       .data(data)
       .enter().append("circle")
       .attr("class", "dot")
-      .attr("id", getLabel)
+      .attr("id", function(d) {return getLabel(d,graph)})
       .attr("r", 3.5)
       .attr("cx", function(d) { return xMap(d,xLabel);})
       .attr("cy", function(d) { return yMap(d,yLabel);})
       .style("fill", function(d) { return color(cValue(d));}) 
       .on("mouseover", function(d) {
-          tooltip.transition()
+          d3.select(this).style("fill", "red");
+
+          ownLabel.transition()
                .duration(200)
                .style("opacity", .9);
-          tooltip.html(d["label"] + "<br/> W: (" + xValue(d,otherXLabel) + ", " + yValue(d,otherYLabel) + ")" + "<br/> S: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
-               .style("left", (xMap(d,otherXLabel) + getXOffsetTop() -8) + "px")
-               .style("top", (yMap(d,otherYLabel) + getYOffsetTop()) + "px");
+          ownLabel.html(d["label"] + "<br/> S: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
+               .style("left", (d3.event.pageX + 5) + "px")
+               .style("top", (d3.event.pageY - 28) + "px");
+
+
+          otherLabel.transition()
+               .duration(200)
+               .style("opacity", .9);
+          otherLabel.html(d["label"] + "<br/> W: (" + xValue(d,otherXLabel) + ", " + yValue(d,otherYLabel) + ")" +  ")")
+               .style("left", (d3.selectAll(
+                  function(d) {
+                    let label = getLabel(d,otherGraph);
+                    console.log("#" + label)
+                    return "#" + label
+                  })))
+               .style("top", (d3.event.pageY - 28) + "px");
       })
       .on("mouseout", function(d) {
-          tooltip.transition()
+          d3.select(this).style("fill", "blue");
+          ownLabel.transition()
+               .duration(500)
+               .style("opacity", 0);
+          otherLabel .transition()
                .duration(500)
                .style("opacity", 0);
       })
@@ -230,6 +267,7 @@ d3.csv("schmidtCounts", function(error, input_data) {
 // TODO - Change name
 d3.csv("schmidtCounts", function(error, input_data) {
   console.log("In WISNIEWSKI_COUNTS");
+  let graph = "w"
   let xLabel = 'wx';
   let yLabel = 'wy';
   let otherXLabel = 'sx';
@@ -279,21 +317,21 @@ d3.csv("schmidtCounts", function(error, input_data) {
       .data(data)
       .enter().append("circle")
       .attr("class", "dot")
-      .attr("id", getLabel)
+      .attr("id", function(d) {return getLabel(d,graph)})
       .attr("r", 3.5)
       .attr("cx", function(d) {return xMap(d,xLabel)})   // TODO - not pass d so explicitly
       .attr("cy", function(d) {return yMap(d,yLabel)})
       .style("fill", function(d) { return color(cValue(d));}) 
       .on("mouseover", function(d) {
-          tooltip.transition()
+          ownLabel.transition()
                .duration(200)
                .style("opacity", .9);
-          tooltip.html(d["label"] + "<br/> S: (" + xValue(d,otherXLabel) + ", " + yValue(d,otherYLabel) + ")" + "<br/> W: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
-               .style("left", (xMap(d,otherXLabel) + getXOffsetBottom() -8) + "px")
-               .style("top", (yMap(d,otherYLabel) + getYOffsetBottom()) + "px");
+          ownLabel.html(d["label"] + "<br/> S: (" + xValue(d,otherXLabel) + ", " + yValue(d,otherYLabel) + ")" + "<br/> W: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
+               .style("left", (d3.event.pageX + 5) + "px")
+               .style("top", (d3.event.pageY - 28) + "px");
       })
       .on("mouseout", function(d) {
-          tooltip.transition()
+          ownLabel.transition()
                .duration(500)
                .style("opacity", 0);
       })
