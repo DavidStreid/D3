@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+
+<!-- Example based on http://bl.ocks.org/mbostock/3887118 -->
+<!-- Tooltip example from http://www.d3noob.org/2013/01/adding-tooltips-to-d3js-graph.html -->
+<!-- Coding style based on http://gist.github.com/mbostock/5977197 -->
+
+<style>
+body {
+  font: 11px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.dot {
+  stroke: #000;
+}
+
+.tooltip {
+  position: absolute;
+  width: 200px;
+  height: 28px;
+  pointer-events: none;
+}
+</style>
+<body>
+<script src="d3.v3.min.js"></script>
+
+<script>
+var margin = {top: 20, right: 20, bottom: 30, left: 40},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+/* 
+ * value accessor - returns the value to encode for a given data object.
+ * scale - maps value to a visual display encoding, such as a pixel position.
+ * map function - maps from data value to display value
+ * axis - sets up axis
+ */ 
+
+var getLabel = function(d) {return d['label']}
+
+// setup x 
+// var xValue = function(d) { return d.Calories;}, // data -> value
+var xValue = function(d,l) {return parseFloat(d[l]);}
+var xScale = d3.scale.linear().range([0, width]); // value -> display
+var xMap = function(d, l) { 
+      let scaledVal = xScale(xValue(d, l));
+      if(isNaN(scaledVal)){
+        throw "xMap::" + l + ", " + JSON.stringify(d);   // rais
+      }
+      return scaledVal;}, // data -> display
+    xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+
+// setup y
+// var yValue = function(d) { return d["Protein (g)"];}, // data -> value
+var yValue = function(d,l) { return parseFloat(d[l]);} // data -> value
+var yScale2 = d3.scale.linear().range([height, 0]) // value -> display
+var yScale = d3.scale.linear().range([height, 0]) // value -> display
+var yMap = function(d,l) {
+      let scaledVal = yScale(yValue(d, l));
+      if(isNaN(scaledVal)){
+        throw "yMap::" + l + ", " + JSON.stringify(s);
+      }
+      return scaledVal; // TODO - yScale
+    } // data -> display
+var yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+// setup fill color
+// TODO
+// var cValue = function(d) { return d.Manufacturer;},
+var cValue = function(d) { return 1;},
+    color = d3.scale.category10();
+
+// Add graph Canvases to the webpage
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+// add the graph canvas to the body of the webpage
+var schmidt_svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+// add the tooltip area to the webpage
+var tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+function removeNones(x,y,data){
+  return [for (d of data) if (d[x] && !isNaN(d[x]) && d[y] && !isNaN(d[y])) d];
+}
+
+// TODO - Proper Offsetting
+function getXOffsetTop(){
+  if(window.innerWidth > 1960){
+    return 960 + margin.left + margin.right;
+  }
+  return 60;
+}
+function getYOffsetTop(){
+  if(window.innerWidth > 1960){
+    return 0;
+  }
+  return height + margin.top + margin.bottom;
+}
+
+function getXOffsetTop(){
+  if(window.innerWidth > 1960){
+    return -(960 + margin.left + margin.right);
+  }
+  return 60;
+}
+function getYOffsetTop(){
+  if(window.innerWidth > 1960){
+    return 0;
+  }
+  return -(height + margin.top + margin.bottom);
+}
+
+// load data
+d3.csv("schmidtCounts", function(error, input_data) { 
+  console.log("In SCHMIDT_COUNTS");
+  let xLabel = 'sx';
+  let yLabel = 'sy';
+  let otherXLabel = 'wx';
+  let otherYLabel = 'wy';
+
+  // Remove points in Wisniewski, but not Schmidt
+  data = removeNones(xLabel,yLabel,input_data);
+
+  // change string (from CSV) into number format
+  // TODO
+  // data.forEach(function(d) {
+  //   d.Calories = +d.Calories;
+  //   d["Protein (g)"] = +d["Protein (g)"];
+  // });
+
+  console.log("XDomain: [" + parseFloat(d3.min(data, function(d) {return xValue(d,xLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return xValue(d,xLabel)})+1) + "]");
+  console.log("yDomain: [" + parseFloat(d3.min(data, function(d) {return yValue(d,yLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return yValue(d,yLabel)})+1));
+
+  // don't want dots overlapping axis, so add in buffer to data domain
+  xScale.domain([d3.min(data, function(d) {return xValue(d,xLabel)})-1, d3.max(data, function(d) {return xValue(d,xLabel)})+1]);
+  yScale.domain([d3.min(data, function(d) {return yValue(d,yLabel)})-1, d3.max(data, function(d) {return yValue(d,yLabel)})+1]);
+
+  // x-axis
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+      .append("text")
+      .attr("class", "label")
+      .attr("x", width)
+      .attr("y", -6)
+      .style("text-anchor", "end")
+      .text("Count1");
+
+  // y-axis
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+      .append("text")
+      .attr("class", "label")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Count2");
+
+  // draw dots
+  // TODO - Figure out how to select by ID on two chart elements
+  svg.selectAll(".dot")
+      .data(data)
+      .enter().append("circle")
+      .attr("class", "dot")
+      .attr("id", getLabel)
+      .attr("r", 3.5)
+      .attr("cx", function(d) { return xMap(d,xLabel);})
+      .attr("cy", function(d) { return yMap(d,yLabel);})
+      .style("fill", function(d) { return color(cValue(d));}) 
+      .on("mouseover", function(d) {
+          tooltip.transition()
+               .duration(200)
+               .style("opacity", .9);
+          tooltip.html(d["label"] + "<br/> W: (" + xValue(d,otherXLabel) + ", " + yValue(d,otherYLabel) + ")" + "<br/> S: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
+               .style("left", (xMap(d,otherXLabel) + getXOffsetTop() -8) + "px")
+               .style("top", (yMap(d,otherYLabel) + getYOffsetTop()) + "px");
+      })
+      .on("mouseout", function(d) {
+          tooltip.transition()
+               .duration(500)
+               .style("opacity", 0);
+      })
+
+  // draw legend
+  var legend = svg.selectAll(".legend")
+      .data(color.domain())
+      .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+  // draw legend colored rectangles
+  legend.append("rect")
+      .attr("x", width - 18)
+      .attr("width", 18)
+      .attr("height", 18)
+      .style("fill", color);
+
+  // draw legend text
+  legend.append("text")
+      .attr("x", width - 24)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .style("text-anchor", "end")
+      .text(function(d) { return d;})
+});
+
+
+// SCHMIDT
+// TODO - Change name
+d3.csv("schmidtCounts", function(error, input_data) {
+  console.log("In WISNIEWSKI_COUNTS");
+  let xLabel = 'wx';
+  let yLabel = 'wy';
+  let otherXLabel = 'sx';
+  let otherYLabel = 'sy';
+  data = removeNones(xLabel,yLabel,input_data);
+
+  // change string (from CSV) into number format
+  // TODO
+  // data.forEach(function(d) {
+  //   d.Calories = +d.Calories;
+  //   d["Protein (g)"] = +d["Protein (g)"];
+  // });
+
+  // don't want dots overlapping axis, so add in buffer to data domain
+  console.log("XDomain: [" + parseFloat(d3.min(data, function(d) {return xValue(d,xLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return xValue(d,xLabel)})+1) + "]");
+  console.log("yDomain: [" + parseFloat(d3.min(data, function(d) {return yValue(d,yLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return yValue(d,yLabel)})+1));
+
+  xScale.domain([d3.min(data, function(d) {return xValue(d,xLabel)})-1, d3.max(data, function(d) {return xValue(d,xLabel)})+1]);
+  yScale.domain([d3.min(data, function(d) {return yValue(d,yLabel)})-1, d3.max(data, function(d) {return yValue(d,yLabel)})+1]);
+
+  // x-axis
+  schmidt_svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+      .append("text")
+      .attr("class", "label")
+      .attr("x", width)
+      .attr("y", -6)
+      .style("text-anchor", "end")
+      .text("Count1");
+
+  // y-axis
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+      .append("text")
+      .attr("class", "label")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Count2");
+
+  // draw dots
+  schmidt_svg.selectAll(".dot")
+      .data(data)
+      .enter().append("circle")
+      .attr("class", "dot")
+      .attr("id", getLabel)
+      .attr("r", 3.5)
+      .attr("cx", function(d) {return xMap(d,xLabel)})   // TODO - not pass d so explicitly
+      .attr("cy", function(d) {return yMap(d,yLabel)})
+      .style("fill", function(d) { return color(cValue(d));}) 
+      .on("mouseover", function(d) {
+          tooltip.transition()
+               .duration(200)
+               .style("opacity", .9);
+          tooltip.html(d["label"] + "<br/> S: (" + xValue(d,otherXLabel) + ", " + yValue(d,otherYLabel) + ")" + "<br/> W: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
+               .style("left", (xMap(d,otherXLabel) + getXOffsetBottom() -8) + "px")
+               .style("top", (yMap(d,otherYLabel) + getYOffsetBottom()) + "px");
+      })
+      .on("mouseout", function(d) {
+          tooltip.transition()
+               .duration(500)
+               .style("opacity", 0);
+      })
+
+  // draw legend
+  var legend = schmidt_svg.selectAll(".legend")
+      .data(color.domain())
+      .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+  // draw legend colored rectangles
+  legend.append("rect")
+      .attr("x", width - 18)
+      .attr("width", 18)
+      .attr("height", 18)
+      .style("fill", color);
+
+  // draw legend text
+  legend.append("text")
+      .attr("x", width - 24)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .style("text-anchor", "end")
+      .text(function(d) { return d;})
+});
+
+</script>
+</body>
+</html>
