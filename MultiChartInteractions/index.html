@@ -53,24 +53,32 @@ var xMap = function(d, l) {
     xAxis = d3.svg.axis().scale(xScale).orient("bottom");
 
 // setup y
-// var yValue = function(d) { return d["Protein (g)"];}, // data -> value
 var yValue = function(d,l) { return parseFloat(d[l]);} // data -> value
 var yScale = d3.scale.linear().range([height, 0]) // value -> display
 var yMap = function(d,l) {
       let scaledVal = yScale(yValue(d, l));
-      if(isNaN(scaledVal)){
-        throw "yMap::" + l + ", " + JSON.stringify(s);
-      }
-      return scaledVal; // TODO - yScale
+      if(isNaN(scaledVal)){throw "yMap::" + l + ", " + JSON.stringify(s);}
+      return scaledVal; 
     } // data -> display
 var yAxis = d3.svg.axis().scale(yScale).orient("left");
 
 // setup fill color
 var defaultColor = "black";
 
-var getLabel = function(d){
-  return (d['label'])
-}
+// http://bl.ocks.org/eesur/4e0a69d57d3bfc8a82c2
+d3.selection.prototype.moveToFront = function() {  
+  return this.each(function(){
+    this.parentNode.appendChild(this);
+  });
+};
+d3.selection.prototype.moveToBack = function() {  
+    return this.each(function() { 
+        var firstChild = this.parentNode.firstChild; 
+        if (firstChild) { 
+            this.parentNode.insertBefore(this, firstChild); 
+        } 
+    });
+};
 
 // Add graph Canvases to the webpage
 var svg = d3.select("body").append("svg")
@@ -96,20 +104,13 @@ function removeNones(x,y,data){
 }
 
 // load data
-d3.csv("schmidtCounts", function(error, input_data) { 
+d3.csv("proteinCounts", function(error, input_data) { 
   console.log("In SCHMIDT_COUNTS");
-  let graph = "s";
-  let otherGraph = "w";
   let xLabel = 'sx';
   let yLabel = 'sy';
-  let otherXLabel = 'wx';
-  let otherYLabel = 'wy';
 
   // Remove points in Wisniewski, but not Schmidt
   data = removeNones(xLabel,yLabel,input_data);
-
-  console.log("XDomain: [" + parseFloat(d3.min(data, function(d) {return xValue(d,xLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return xValue(d,xLabel)})+1) + "]");
-  console.log("yDomain: [" + parseFloat(d3.min(data, function(d) {return yValue(d,yLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return yValue(d,yLabel)})+1));
 
   // don't want dots overlapping axis, so add in buffer to data domain
   xScale.domain([d3.min(data, function(d) {return xValue(d,xLabel)})-1, d3.max(data, function(d) {return xValue(d,xLabel)})+1]);
@@ -143,13 +144,15 @@ d3.csv("schmidtCounts", function(error, input_data) {
   svg.selectAll(".dot")
       .data(data)
       .enter().append("circle")
-      .attr("id", function(d) { return getLabel(d)})
       .attr("class", "dot")
       .attr("r", 3.5)
       .attr("cx", function(d) { return xMap(d,xLabel);})
       .attr("cy", function(d) { return yMap(d,yLabel);})
       .style("fill", defaultColor) // TOOD - Make dynamic
       .on("mouseover", function(d) {
+        // Move selected point to fornt of view
+          d3.select(this).moveToFront();
+          
           // Highlight points
           d3.selectAll(".dot").style("fill", function(d2) {if(d["label"]==d2["label"]){return "red"}});
           // Add label
@@ -162,7 +165,7 @@ d3.csv("schmidtCounts", function(error, input_data) {
                .style("color", "red");
       })
       .on("mouseout", function(d) {
-          d3.selectAll(".dot").style("fill", function(d2) {if(d["label"]==d2["label"]){return defaultColor}});
+          d3.select(this).moveToBack();
           tooltip.transition()
                .duration(500)
                .style("opacity", 0);
@@ -172,26 +175,16 @@ d3.csv("schmidtCounts", function(error, input_data) {
 
 
 // SCHMIDT
-// TODO - Change name
-d3.csv("schmidtCounts", function(error, input_data) {
+d3.csv("proteinCounts", function(error, input_data) {
   console.log("In WISNIEWSKI_COUNTS");
   let xLabel = 'wx';
   let yLabel = 'wy';
-  let otherXLabel = 'sx';
-  let otherYLabel = 'sy';
   data = removeNones(xLabel,yLabel,input_data);
 
-  // change string (from CSV) into number format
-  // TODO
-  // data.forEach(function(d) {
-  //   d.Calories = +d.Calories;
-  //   d["Protein (g)"] = +d["Protein (g)"];
-  // });
-
-  // don't want dots overlapping axis, so add in buffer to data domain
   console.log("XDomain: [" + parseFloat(d3.min(data, function(d) {return xValue(d,xLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return xValue(d,xLabel)})+1) + "]");
   console.log("yDomain: [" + parseFloat(d3.min(data, function(d) {return yValue(d,yLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return yValue(d,yLabel)})+1));
 
+  // don't want dots overlapping axis, so add in buffer to data domain
   xScale.domain([d3.min(data, function(d) {return xValue(d,xLabel)})-1, d3.max(data, function(d) {return xValue(d,xLabel)})+1]);
   yScale.domain([d3.min(data, function(d) {return yValue(d,yLabel)})-1, d3.max(data, function(d) {return yValue(d,yLabel)})+1]);
 
@@ -229,6 +222,8 @@ d3.csv("schmidtCounts", function(error, input_data) {
       .attr("cy", function(d) {return yMap(d,yLabel)})
       .style("fill", defaultColor) 
       .on("mouseover", function(d) {
+          // Move selected point to fornt of view
+          d3.select(this).moveToFront();
           // Highlight points
           d3.selectAll(".dot").style("fill", function(d2) {
             if(d["label"]==d2["label"]){return "red";}
@@ -242,7 +237,7 @@ d3.csv("schmidtCounts", function(error, input_data) {
                .style("top", (d3.event.pageY - 28) + "px");
       })
       .on("mouseout", function(d) {
-          d3.selectAll(".dot").style("fill", function(d2) {if(d["label"]==d2["label"]){return defaultColor}});
+          d3.select(this).moveToBack();
           tooltip.transition()
                .duration(500)
                .style("opacity", 0);
