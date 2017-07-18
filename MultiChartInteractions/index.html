@@ -2,9 +2,7 @@
 <html>
 <meta charset="utf-8">
 
-<!-- Example based on http://bl.ocks.org/mbostock/3887118 -->
-<!-- Tooltip example from http://www.d3noob.org/2013/01/adding-tooltips-to-d3js-graph.html -->
-<!-- Coding style based on http://gist.github.com/mbostock/5977197 -->
+<!-- Example based on http://bl.ocks.org/weiglemc/6185069 -->
 
 <style>
 body {
@@ -22,19 +20,12 @@ body {
   stroke: #000;
 }
 
-.ownLabel {
+.tooltip {
   position: absolute;
   width: 200px;
   height: 28px;
   pointer-events: none;
 }
-.otherLabel{
-  position: absolute;
-  width: 200px;
-  height: 28px;
-  pointer-events: none;
-}
-
 </style>
 <body>
 <script src="d3.v3.min.js"></script>
@@ -51,28 +42,19 @@ var margin = {top: 20, right: 20, bottom: 30, left: 40},
  * axis - sets up axis
  */ 
 
-var getLabel = function(d,graph) {
-  // console.log(graph);
-  // console.log(d['label']);
-  // console.log(graph + d['label'])
-  return graph + d['label']}
-
 // setup x 
 // var xValue = function(d) { return d.Calories;}, // data -> value
 var xValue = function(d,l) {return parseFloat(d[l]);}
 var xScale = d3.scale.linear().range([0, width]); // value -> display
 var xMap = function(d, l) { 
       let scaledVal = xScale(xValue(d, l));
-      if(isNaN(scaledVal)){
-        throw "xMap::" + l + ", " + JSON.stringify(d);   // rais
-      }
+      if(isNaN(scaledVal)){throw "xMap::" + l + ", " + JSON.stringify(d); } // TODO - Raise Exception
       return scaledVal;}, // data -> display
     xAxis = d3.svg.axis().scale(xScale).orient("bottom");
 
 // setup y
 // var yValue = function(d) { return d["Protein (g)"];}, // data -> value
 var yValue = function(d,l) { return parseFloat(d[l]);} // data -> value
-var yScale2 = d3.scale.linear().range([height, 0]) // value -> display
 var yScale = d3.scale.linear().range([height, 0]) // value -> display
 var yMap = function(d,l) {
       let scaledVal = yScale(yValue(d, l));
@@ -84,10 +66,11 @@ var yMap = function(d,l) {
 var yAxis = d3.svg.axis().scale(yScale).orient("left");
 
 // setup fill color
-// TODO
-// var cValue = function(d) { return d.Manufacturer;},
-var cValue = function(d) { return 1;},
-    color = d3.scale.category10();
+var defaultColor = "black";
+
+var getLabel = function(d){
+  return (d['label'])
+}
 
 // Add graph Canvases to the webpage
 var svg = d3.select("body").append("svg")
@@ -103,45 +86,13 @@ var schmidt_svg = d3.select("body").append("svg")
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-// add the ownLabel area to the webpage
-var ownLabel = d3.select("body").append("div")
-    .attr("class", "ownLabel")
-    .style("opacity", 0);
-
-// add the otherLabel area to the webpage
-var otherLabel = d3.select("body").append("div")
-    .attr("class", "otherLabel")
+// add the tooltip area to the webpage
+var tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
     .style("opacity", 0);
 
 function removeNones(x,y,data){
   return [for (d of data) if (d[x] && !isNaN(d[x]) && d[y] && !isNaN(d[y])) d];
-}
-
-// TODO - Proper Offsetting
-function getXOffsetTop(){
-  if(window.innerWidth > 1960){
-    return 960 + margin.left + margin.right;
-  }
-  return 60;
-}
-function getYOffsetTop(){
-  if(window.innerWidth > 1960){
-    return 0;
-  }
-  return height + margin.top + margin.bottom;
-}
-
-function getXOffsetTop(){
-  if(window.innerWidth > 1960){
-    return -(960 + margin.left + margin.right);
-  }
-  return 60;
-}
-function getYOffsetTop(){
-  if(window.innerWidth > 1960){
-    return 0;
-  }
-  return -(height + margin.top + margin.bottom);
 }
 
 // load data
@@ -156,13 +107,6 @@ d3.csv("schmidtCounts", function(error, input_data) {
 
   // Remove points in Wisniewski, but not Schmidt
   data = removeNones(xLabel,yLabel,input_data);
-
-  // change string (from CSV) into number format
-  // TODO
-  // data.forEach(function(d) {
-  //   d.Calories = +d.Calories;
-  //   d["Protein (g)"] = +d["Protein (g)"];
-  // });
 
   console.log("XDomain: [" + parseFloat(d3.min(data, function(d) {return xValue(d,xLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return xValue(d,xLabel)})+1) + "]");
   console.log("yDomain: [" + parseFloat(d3.min(data, function(d) {return yValue(d,yLabel)})-1) + ", " + parseFloat(d3.max(data, function(d) {return yValue(d,yLabel)})+1));
@@ -181,7 +125,7 @@ d3.csv("schmidtCounts", function(error, input_data) {
       .attr("x", width)
       .attr("y", -6)
       .style("text-anchor", "end")
-      .text("Count1");
+      .text("Simulation Counts");
 
   // y-axis
   svg.append("g")
@@ -193,72 +137,37 @@ d3.csv("schmidtCounts", function(error, input_data) {
       .attr("y", 6)
       .attr("dy", ".71em")
       .style("text-anchor", "end")
-      .text("Count2");
+      .text("Schmidt Counts");
 
   // draw dots
-  // TODO - Figure out how to select by ID on two chart elements
   svg.selectAll(".dot")
       .data(data)
       .enter().append("circle")
+      .attr("id", function(d) { return getLabel(d)})
       .attr("class", "dot")
-      .attr("id", function(d) {return getLabel(d,graph)})
       .attr("r", 3.5)
       .attr("cx", function(d) { return xMap(d,xLabel);})
       .attr("cy", function(d) { return yMap(d,yLabel);})
-      .style("fill", function(d) { return color(cValue(d));}) 
+      .style("fill", defaultColor) // TOOD - Make dynamic
       .on("mouseover", function(d) {
-          d3.select(this).style("fill", "red");
-          ownLabel.transition()
+          // Highlight points
+          d3.selectAll(".dot").style("fill", function(d2) {if(d["label"]==d2["label"]){return "red"}});
+          // Add label
+          tooltip.transition()
                .duration(200)
                .style("opacity", .9);
-          // ownLabel.html(d["label"] + "<br/> S: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
-          ownLabel.html(getLabel(d,otherGraph))
+          tooltip.html(d["label"] + "<br/> (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
                .style("left", (d3.event.pageX + 5) + "px")
-               .style("top", (d3.event.pageY - 28) + "px");
-
-          otherLabel.transition()
-               .duration(200)
-               .style("opacity", .9);
-          otherLabel.html(d["label"] + "<br/> W: (" + xValue(d,otherXLabel) + ", " + yValue(d,otherYLabel) + ")" +  ")")
-               .style("left", (d3.selectAll(
-                  function(d) {
-                    let label = getLabel(d,otherGraph);
-                    console.log("#" + label)
-                    return "#" + label
-                  })))
-               .style("top", (d3.event.pageY - 28) + "px");
+               .style("top", (d3.event.pageY - 28) + "px")
+               .style("color", "red");
       })
       .on("mouseout", function(d) {
-          d3.select(this).style("fill", "blue");
-          ownLabel.transition()
-               .duration(500)
-               .style("opacity", 0);
-          otherLabel .transition()
+          d3.selectAll(".dot").style("fill", function(d2) {if(d["label"]==d2["label"]){return defaultColor}});
+          tooltip.transition()
                .duration(500)
                .style("opacity", 0);
       })
-
-  // draw legend
-  var legend = svg.selectAll(".legend")
-      .data(color.domain())
-      .enter().append("g")
-      .attr("class", "legend")
-      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
-
-  // draw legend colored rectangles
-  legend.append("rect")
-      .attr("x", width - 18)
-      .attr("width", 18)
-      .attr("height", 18)
-      .style("fill", color);
-
-  // draw legend text
-  legend.append("text")
-      .attr("x", width - 24)
-      .attr("y", 9)
-      .attr("dy", ".35em")
-      .style("text-anchor", "end")
-      .text(function(d) { return d;})
+      // TODO - Add legend
 });
 
 
@@ -266,7 +175,6 @@ d3.csv("schmidtCounts", function(error, input_data) {
 // TODO - Change name
 d3.csv("schmidtCounts", function(error, input_data) {
   console.log("In WISNIEWSKI_COUNTS");
-  let graph = "w"
   let xLabel = 'wx';
   let yLabel = 'wy';
   let otherXLabel = 'sx';
@@ -297,10 +205,10 @@ d3.csv("schmidtCounts", function(error, input_data) {
       .attr("x", width)
       .attr("y", -6)
       .style("text-anchor", "end")
-      .text("Count1");
+      .text("Simulation Counts");
 
   // y-axis
-  svg.append("g")
+  schmidt_svg.append("g")
       .attr("class", "y axis")
       .call(yAxis)
       .append("text")
@@ -309,53 +217,37 @@ d3.csv("schmidtCounts", function(error, input_data) {
       .attr("y", 6)
       .attr("dy", ".71em")
       .style("text-anchor", "end")
-      .text("Count2");
+      .text("Wisniewski Counts");
 
   // draw dots
   schmidt_svg.selectAll(".dot")
       .data(data)
       .enter().append("circle")
       .attr("class", "dot")
-      .attr("id", function(d) {return getLabel(d,graph)})
       .attr("r", 3.5)
       .attr("cx", function(d) {return xMap(d,xLabel)})   // TODO - not pass d so explicitly
       .attr("cy", function(d) {return yMap(d,yLabel)})
-      // .style("fill", function(d) { return color(cValue(d));}) 
+      .style("fill", defaultColor) 
       .on("mouseover", function(d) {
-          ownLabel.transition()
+          // Highlight points
+          d3.selectAll(".dot").style("fill", function(d2) {
+            if(d["label"]==d2["label"]){return "red";}
+          });
+          // Add label
+          tooltip.transition()
                .duration(200)
                .style("opacity", .9);
-          ownLabel.html(d["label"] + "<br/> S: (" + xValue(d,otherXLabel) + ", " + yValue(d,otherYLabel) + ")" + "<br/> W: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
+          tooltip.html(d["label"] + "<br/> (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
                .style("left", (d3.event.pageX + 5) + "px")
                .style("top", (d3.event.pageY - 28) + "px");
       })
       .on("mouseout", function(d) {
-          ownLabel.transition()
+          d3.selectAll(".dot").style("fill", function(d2) {if(d["label"]==d2["label"]){return defaultColor}});
+          tooltip.transition()
                .duration(500)
                .style("opacity", 0);
       })
-
-  // draw legend
-  var legend = schmidt_svg.selectAll(".legend")
-      .data(color.domain())
-      .enter().append("g")
-      .attr("class", "legend")
-      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
-
-  // draw legend colored rectangles
-  legend.append("rect")
-      .attr("x", width - 18)
-      .attr("width", 18)
-      .attr("height", 18)
-      .style("fill", color);
-
-  // draw legend text
-  legend.append("text")
-      .attr("x", width - 24)
-      .attr("y", 9)
-      .attr("dy", ".35em")
-      .style("text-anchor", "end")
-      .text(function(d) { return d;})
+      // TODO - Add Legend
 });
 
 </script>
