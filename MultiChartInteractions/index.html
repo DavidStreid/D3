@@ -208,14 +208,13 @@ d3.csv("schmidtCounts", function(error, input_data) {
       .style("fill", function(d) { return color(cValue(d));}) 
       .on("mouseover", function(d) {
           d3.select(this).style("fill", "red");
-
           ownLabel.transition()
                .duration(200)
                .style("opacity", .9);
-          ownLabel.html(d["label"] + "<br/> S: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
+          // ownLabel.html(d["label"] + "<br/> S: (" + xValue(d,xLabel) + ", " + yValue(d,yLabel) + ")")
+          ownLabel.html(getLabel(d,otherGraph))
                .style("left", (d3.event.pageX + 5) + "px")
                .style("top", (d3.event.pageY - 28) + "px");
-
 
           otherLabel.transition()
                .duration(200)
@@ -321,7 +320,7 @@ d3.csv("schmidtCounts", function(error, input_data) {
       .attr("r", 3.5)
       .attr("cx", function(d) {return xMap(d,xLabel)})   // TODO - not pass d so explicitly
       .attr("cy", function(d) {return yMap(d,yLabel)})
-      .style("fill", function(d) { return color(cValue(d));}) 
+      // .style("fill", function(d) { return color(cValue(d));}) 
       .on("mouseover", function(d) {
           ownLabel.transition()
                .duration(200)
